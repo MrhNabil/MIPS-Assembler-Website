@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIPS Assembler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F7F4; /* Light neutral background */
+            color: #1a1a1a;
+        }
+        .font-fira-code {
+            font-family: 'Fira Code', monospace;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #E0E0E0;
+        }
+    </style>
+</head>
+<body class="antialiased flex items-center justify-center min-h-screen">
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <section id="assembler" class="content-section active">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800">Live MIPS Assembler</h2>
+                <p class="mt-2 text-lg text-gray-600">
+                    Enter a supported MIPS instruction below to see it instantly converted into its 32-bit binary machine code.
+                </p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="card">
+                    <h3 class="text-xl font-semibold mb-2 text-gray-800">Assembler Demo</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="mips-input" class="block text-sm font-medium text-gray-700">MIPS Instruction:</label>
+                            <input type="text" id="mips-input" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-E57373 focus:border-E57373 sm:text-sm font-fira-code" placeholder="e.g., add $t0, $s1, $s2">
+                        </div>
+                        <button id="assemble-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-E57373 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-E57373">Assemble</button>
+                        <div>
+                             <label for="mips-output" class="block text-sm font-medium text-gray-700">Binary Output:</label>
+                             <div id="mips-output" class="mt-1 p-3 bg-gray-100 rounded-md font-fira-code text-gray-800 break-all min-h-[44px]"></div>
+                        </div>
+                    </div>
+                </div>
+                 <div class="card">
+                    <h3 class="text-xl font-semibold mb-2 text-gray-800">Supported Instructions</h3>
+                    <div class="text-sm text-gray-600 font-fira-code grid grid-cols-3 gap-x-4 gap-y-1">
+                        <span>add</span> <span>addu</span> <span>sub</span>
+                        <span>subu</span> <span>and</span> <span>or</span>
+                        <span>xor</span> <span>nor</span> <span>slt</span>
+                        <span>sll</span> <span>srl</span> <span>sra</span>
+                        <span>jr</span> <span>mult</span> <span>div</span>
+                        <span>mfhi</span> <span>mflo</span> <span>addi</span>
+                        <span>addiu</span> <span>andi</span> <span>ori</span>
+                        <span>xori</span> <span>lui</span> <span>lw</span>
+                        <span>sw</span> <span>beq</span> <span>bne</span>
+                        <span>j</span> <span>jal</span> <span>move</span>
+                        <span>nop</span> <span>li</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- MIPS Assembler Demo Logic (JS implementation) ---
+    const mipsInput = document.getElementById('mips-input');
+    const assembleBtn = document.getElementById('assemble-btn');
+    const mipsOutput = document.getElementById('mips-output');
+
+    const assembleMipsJS = (assemblyCode) => {
+        const regToNum = (regName) => {
+            const regMap = {"$zero":0,"$0":0,"$at":1,"$1":1,"$v0":2,"$2":2,"$v1":3,"$3":3,"$a0":4,"$4":4,"$a1":5,"$5":5,"$a2":6,"$6":6,"$a3":7,"$7":7,"$t0":8,"$8":8,"$t1":9,"$9":9,"$t2":10,"$10":10,"$t3":11,"$11":11,"$t4":12,"$12":12,"$t5":13,"$13":13,"$t6":14,"$14":14,"$t7":15,"$15":15,"$s0":16,"$16":16,"$s1":17,"$17":17,"$s2":18,"$18":18,"$s3":19,"$19":19,"$s4":20,"$20":20,"$s5":21,"$21":21,"$s6":22,"$22":22,"$s7":23,"$23":23,"$t8":24,"$24":24,"$t9":25,"$25":25,"$k0":26,"$26":26,"$k1":27,"$27":27,"$gp":28,"$28":28,"$sp":29,"$29":29,"$fp":30,"$30":30,"$ra":31,"$31":31, ...Object.fromEntries(Array.from({length:32},(_,i)=>[`r${i}`,i]))};
+            return regMap[regName.toLowerCase()] ?? null;
+        };
+        const toBinary = (value, bits) => {
+            if (value < 0) { value = (1 << bits) + value; }
+            return value.toString(2).padStart(bits, '0');
+        };
+
+        const R_TYPE_FUNCTS={"add":{"opcode":"000000","funct":"100000"},"addu":{"opcode":"000000","funct":"100001"},"sub":{"opcode":"000000","funct":"100010"},"subu":{"opcode":"000000","funct":"100011"},"and":{"opcode":"000000","funct":"100100"},"or":{"opcode":"000000","funct":"100101"},"xor":{"opcode":"000000","funct":"100110"},"nor":{"opcode":"000000","funct":"100111"},"slt":{"opcode":"000000","funct":"101010"},"sltu":{"opcode":"000000","funct":"101011"},"sll":{"opcode":"000000","funct":"000000"},"srl":{"opcode":"000000","funct":"000010"},"sra":{"opcode":"000000","funct":"000011"},"jr":{"opcode":"000000","funct":"001000"},"mult":{"opcode":"000000","funct":"011000"},"div":{"opcode":"000000","funct":"011010"},"mfhi":{"opcode":"000000","funct":"010000"},"mflo":{"opcode":"000000","funct":"010010"}};
+        const I_TYPE_OPCODES={"addi":"001000","addiu":"001001","andi":"001100","ori":"001101","xori":"001110","lui":"001111","lw":"100011","sw":"101011","lb":"100000","lbu":"100100","lh":"100001","lhu":"100101","sb":"101000","sh":"101001","beq":"000100","bne":"000101","slti":"001010","sltiu":"001011"};
+        const J_TYPE_OPCODES={"j":"000010","jal":"000011"};
+
+        const parts = assemblyCode.replace(/,/g, " ").replace(/\s+/g, ' ').trim().split(' ');
+        const instruction = parts[0].toLowerCase();
+        
+        if (instruction === "nop") return assembleMipsJS("sll $zero, $zero, 0");
+        if (instruction === "move") {
+             if (parts.length !== 3) return "Error: move $rd, $rs";
+             return assembleMipsJS(`addu ${parts[1]} ${parts[2]} $zero`);
+        }
+        if (instruction === "li") {
+            if (parts.length !== 3) return "Error: li $rt, immediate";
+            const immVal = parseInt(parts[2]);
+            if (isNaN(immVal)) return "Error: Invalid immediate value.";
+            if (immVal >= -32768 && immVal <= 32767) {
+                return assembleMipsJS(`addi ${parts[1]} $zero ${immVal}`);
+            } else {
+                 return "Error: Immediate value out of 16-bit range for this simplified demo.";
+            }
+        }
+
+        if (instruction in R_TYPE_FUNCTS) {
+            const { opcode, funct } = R_TYPE_FUNCTS[instruction];
+            let rd_num, rs_num, rt_num, shamt_val;
+            if (["add","addu","sub","subu","and","or","xor","nor","slt","sltu"].includes(instruction)) {
+                if (parts.length !== 4) return `Error: Use format ${instruction} $rd, $rs, $rt`;
+                rd_num = regToNum(parts[1]); rs_num = regToNum(parts[2]); rt_num = regToNum(parts[3]);
+                if ([rd_num, rs_num, rt_num].includes(null)) return "Error: Invalid register.";
+                return opcode + toBinary(rs_num,5) + toBinary(rt_num,5) + toBinary(rd_num,5) + '00000' + funct;
+            } else if (["sll", "srl", "sra"].includes(instruction)) {
+                if (parts.length !== 4) return `Error: Use format ${instruction} $rd, $rt, shamt`;
+                rd_num = regToNum(parts[1]); rt_num = regToNum(parts[2]); shamt_val = parseInt(parts[3]);
+                if ([rd_num, rt_num].includes(null) || isNaN(shamt_val)) return "Error: Invalid register or shamt.";
+                return opcode + '00000' + toBinary(rt_num,5) + toBinary(rd_num,5) + toBinary(shamt_val,5) + funct;
+            } else if (instruction === "jr") {
+                if (parts.length !== 2) return `Error: Use format jr $rs`;
+                rs_num = regToNum(parts[1]);
+                if (rs_num === null) return "Error: Invalid register.";
+                return opcode + toBinary(rs_num,5) + '000000000000000' + funct;
+            }
+            // Add other R-type formats if needed
+            return `Error: R-type format for ${instruction} not implemented.`;
+        }
+        if (instruction in I_TYPE_OPCODES) {
+            const opcode = I_TYPE_OPCODES[instruction];
+            let rt_num, rs_num, imm_val;
+            if (["addi","addiu","andi","ori","xori","slti","sltiu"].includes(instruction)) {
+                if (parts.length !== 4) return `Error: Use format ${instruction} $rt, $rs, imm`;
+                rt_num = regToNum(parts[1]); rs_num = regToNum(parts[2]); imm_val = parseInt(parts[3]);
+                if ([rt_num, rs_num].includes(null) || isNaN(imm_val)) return "Error: Invalid register or immediate.";
+                return opcode + toBinary(rs_num,5) + toBinary(rt_num,5) + toBinary(imm_val,16);
+            } else if (["lw", "sw"].includes(instruction)) {
+                 if (parts.length !== 3) return `Error: Use format ${instruction} $rt, offset($rs)`;
+                 rt_num = regToNum(parts[1]);
+                 const memPart = parts[2].match(/(-?\d+)\((\$\w+|r\d+)\)/);
+                 if (!memPart) return "Error: Invalid memory format.";
+                 imm_val = parseInt(memPart[1]);
+                 rs_num = regToNum(memPart[2]);
+                 if ([rt_num, rs_num].includes(null) || isNaN(imm_val)) return "Error: Invalid register or offset.";
+                 return opcode + toBinary(rs_num,5) + toBinary(rt_num,5) + toBinary(imm_val,16);
+            } else if (["beq", "bne"].includes(instruction)) {
+                 if (parts.length !== 4) return `Error: Use format ${instruction} $rs, $rt, offset`;
+                 rs_num = regToNum(parts[1]); rt_num = regToNum(parts[2]); imm_val = parseInt(parts[3]);
+                 if ([rs_num, rt_num].includes(null) || isNaN(imm_val)) return "Error: Invalid register or offset.";
+                 return opcode + toBinary(rs_num,5) + toBinary(rt_num,5) + toBinary(imm_val,16);
+            }
+            return `Error: I-type format for ${instruction} not implemented.`;
+        }
+        if (instruction in J_TYPE_OPCODES) {
+             const opcode = J_TYPE_OPCODES[instruction];
+             if (parts.length !== 2) return `Error: Use format ${instruction} address`;
+             const addr_val = parseInt(parts[1]);
+             if (isNaN(addr_val)) return "Error: Invalid address.";
+             return opcode + toBinary(addr_val, 26);
+        }
+        return `Error: Unknown instruction '${instruction}'.`;
+    };
+
+    const handleAssemble = () => {
+        const input = mipsInput.value.trim();
+        if (!input) {
+            mipsOutput.textContent = '';
+            return;
+        }
+        const result = assembleMipsJS(input);
+        mipsOutput.textContent = result;
+        if (result.startsWith("Error:")) {
+            mipsOutput.classList.add('text-red-600');
+        } else {
+            mipsOutput.classList.remove('text-red-600');
+            // Add spaces for readability
+            mipsOutput.textContent = result.replace(/(.{6})(.{5})(.{5})(.{5})(.{5})(.{6})/, '$1 $2 $3 $4 $5 $6').replace(/(.{6})(.{5})(.{5})(.{16})/, '$1 $2 $3 $4').replace(/(.{6})(.{26})/, '$1 $2');
+        }
+    };
+    
+    assembleBtn.addEventListener('click', handleAssemble);
+    mipsInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            handleAssemble();
+        }
+    });
+});
+</script>
+</body>
+</html>
